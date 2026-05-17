@@ -39,6 +39,7 @@ results/*.log
 
 # Local planning / private notes
 workflow_plan.md
+plan.md
 
 # IDE and OS files
 .idea/
