@@ -3,26 +3,25 @@
   <a href="README.zh-CN.md">中文</a>
 </p>
 
-# Industrial Parts Defect Detection with OpenCV and Deep Learning
+# Industrial Parts Defect Detection with Explainable Deep Learning
 
-This project builds a minimum viable industrial visual inspection pipeline using the `bottle` category from the MVTec AD dataset. The task is binary image classification:
+This project builds an industrial visual inspection pipeline on the `bottle` category of the MVTec AD dataset. It starts with a supervised defect classifier and extends the workflow with Grad-CAM based explainability and mask-level localization analysis.
+
+The task is binary image classification:
 
 - `good = 0`
 - `defect = 1`
 
-The project covers data checking, metadata-based splitting, image preprocessing, ResNet18 transfer learning, evaluation metrics, and visual result generation.
+Beyond classification accuracy, the project also checks whether the model focuses on the real defective regions provided by MVTec ground-truth masks.
 
-## Why This Project
+## Highlights
 
-Industrial defect detection is a common computer vision use case in manufacturing. This project is designed to demonstrate a practical workflow for:
-
-- automated visual quality inspection
-- normal/defective part classification
-- reproducible data preparation
-- model training and evaluation
-- result visualization for engineering review
-
-It is especially relevant to industrial AI, computer vision, and manufacturing quality inspection roles.
+- Reproducible data checking and metadata-based train/validation/test split
+- ResNet18 transfer learning with class-weighted loss for imbalanced data
+- Evaluation with accuracy, precision, recall, F1-score, confusion matrix, and per-defect-type recall
+- Grad-CAM visualization for model attention analysis
+- Mask-level localization metrics using MVTec ground-truth masks
+- Visual reports for correct predictions, failure cases, and defect heatmap overlays
 
 ## Dataset
 
@@ -50,17 +49,20 @@ Checked data counts:
 | test | broken_small | 22 |
 | test | contamination | 21 |
 
-<!-- The `data/` directory is ignored by Git and should not be committed. -->
+The `data/` directory is ignored by Git and should not be committed.
 
-## Important Note About Splitting
+## Experiment Design
 
-The official MVTec AD setup is mainly an anomaly detection benchmark:
+MVTec AD is primarily designed for anomaly detection:
 
 - training data contains only normal images
 - test data contains both normal and defective images
 - defective images include pixel-level masks
 
-This first version is a supervised binary classification MVP. To train a binary classifier, part of the defective test images is assigned to the training and validation splits through a fixed metadata file.
+This repository uses the dataset in two ways:
+
+1. **Supervised binary classification:** a fixed metadata split assigns some defective samples to train/validation/test.
+2. **Explainability and localization analysis:** Grad-CAM heatmaps are compared with MVTec ground-truth masks on test defects.
 
 Default split rule:
 
@@ -78,8 +80,6 @@ Current experiment split:
 | val | 42 | 12 | 54 |
 | test | 20 | 13 | 33 |
 
-This should be described as a binary classification experiment, not as the official MVTec anomaly detection benchmark.
-
 ## Project Structure
 
 ```text
@@ -90,19 +90,19 @@ This should be described as a binary classification experiment, not as the offic
 │   ├── check_data.py
 │   ├── dataset.py
 │   ├── evaluate.py
+│   ├── explain.py
 │   ├── model.py
 │   ├── train.py
 │   └── visualize.py
 ├── results/
 │   ├── confusion_matrix.png
+│   ├── gradcam_mask_overlay.png
 │   ├── sample_predictions.png
 │   └── misclassified_samples.png
 ├── README.md
 ├── README.zh-CN.md
 ├── pyproject.toml
-├── requirements.txt
-├── plan.md
-└── workflow_plan.md
+└── requirements.txt
 ```
 
 ## Environment Setup
@@ -113,7 +113,7 @@ This project uses `uv`.
 uv sync
 ```
 
-The default configuration installs the CPU version of PyTorch. This is enough for the current dataset and project demonstration.
+The default configuration installs the CPU version of PyTorch, which is enough for this dataset-scale experiment.
 
 ## How To Run
 
@@ -151,7 +151,7 @@ If pretrained weight download is unavailable, run:
 uv run python src/train.py --epochs 10 --batch_size 16 --no_pretrained
 ```
 
-### 3. Evaluate
+### 3. Evaluate Classification
 
 ```bash
 uv run python src/evaluate.py
@@ -164,15 +164,6 @@ results/metrics.json
 results/predictions.csv
 results/confusion_matrix.png
 ```
-
-Metrics:
-
-- Accuracy
-- Precision
-- Recall
-- F1-score
-- Confusion Matrix
-- Per-defect-type recall
 
 ### 4. Visualize Predictions
 
@@ -187,30 +178,83 @@ results/sample_predictions.png
 results/misclassified_samples.png
 ```
 
-## Results
+### 5. Generate Grad-CAM And Localization Metrics
 
-After running evaluation and visualization, the following files can be used in the GitHub README:
+```bash
+uv run python src/explain.py --max_visualizations 8
+```
+
+Outputs:
 
 ```text
-results/confusion_matrix.png
-results/sample_predictions.png
-results/misclassified_samples.png
+results/gradcam_localization.csv
+results/localization_metrics.json
+results/gradcam_mask_overlay.png
 ```
+
+The script computes Grad-CAM for the defect class and compares the normalized heatmap with pixel-level ground-truth masks using IoU, Dice, pointing-hit rate, and inside/outside-mask activation.
+
+## Results
+
+Current classification results on the test split:
+
+| Metric | Value |
+| --- | ---: |
+| Accuracy | 0.939 |
+| Precision | 1.000 |
+| Recall | 0.846 |
+| F1-score | 0.917 |
+
+Per-defect-type recall:
+
+| Defect Type | Recall |
+| --- | ---: |
+| broken_large | 1.000 |
+| broken_small | 1.000 |
+| contamination | 0.500 |
+
+Localization analysis on 13 masked defective test samples:
+
+| Metric | Value |
+| --- | ---: |
+| Mean CAM IoU | 0.216 |
+| Mean CAM Dice | 0.321 |
+| Pointing-hit rate | 0.538 |
+| Mean CAM activation inside mask | 0.620 |
+| Mean CAM activation outside mask | 0.230 |
+
+## Visual Reports
+
+### Confusion Matrix
+
+![Confusion matrix](results/confusion_matrix.png)
+
+### Prediction Samples
+
+![Sample predictions](results/sample_predictions.png)
+
+### Failure Cases
+
+![Misclassified samples](results/misclassified_samples.png)
+
+### Grad-CAM And Ground-truth Mask Overlay
+
+![Grad-CAM mask overlay](results/gradcam_mask_overlay.png)
 
 ## Industrial Value
 
-This project simulates a basic industrial visual inspection workflow:
+This project simulates a practical visual quality inspection workflow:
 
-- detect abnormal product appearance automatically
-- reduce manual inspection workload
-- evaluate false positives and missed detections with precision and recall
-- inspect failure cases through prediction visualization
-- provide a foundation for future anomaly localization and deployment
+- automatically identify abnormal product appearance
+- evaluate false positives and missed defects with precision and recall
+- inspect weak defect categories through per-type recall
+- use Grad-CAM to review whether the model attends to meaningful regions
+- compare model attention against ground-truth defect masks for localization analysis
+- provide a foundation for anomaly detection, defect localization, and deployment demos
 
 ## Next Steps
 
-- Use ground-truth masks for anomaly localization
-- Add Grad-CAM for model attention visualization
-- Try anomaly detection methods such as PatchCore, PaDiM, or AutoEncoder
-- Extend the pipeline to `metal_nut` and `capsule`
-- Build a Streamlit or Gradio demo
+- Add an unsupervised anomaly detection baseline such as AutoEncoder, PaDiM, or PatchCore
+- Compare supervised classification and anomaly detection under the same reporting format
+- Extend the pipeline to `metal_nut`, `capsule`, and other MVTec categories
+- Build a Streamlit or Gradio inspection demo with uploaded image inference and heatmap overlay

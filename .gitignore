@@ -33,6 +33,7 @@ results/*.onnx
 results/*.csv
 results/*.json
 results/*.log
+results/gradcam/
 
 # Keep selected result images for GitHub display
 !results/*.png
