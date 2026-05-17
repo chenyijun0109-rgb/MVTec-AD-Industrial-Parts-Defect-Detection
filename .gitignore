@@ -1,0 +1,20 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Dataset and large experiment artifacts
+data/
+results/*.pth
+results/*.pt
+results/*.csv
+results/*.json
+
+# Keep result images available for GitHub display if desired
+!results/*.png
