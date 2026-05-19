@@ -33,10 +33,17 @@ results/*.onnx
 results/*.csv
 results/*.json
 results/*.log
+results/**/*.csv
+results/**/*.json
+results/**/*.log
+results/**/*.npy
 results/gradcam/
+results/**/anomaly_maps/
+results/patchcore_debug*/
 
 # Keep selected result images for GitHub display
 !results/*.png
+!results/**/*.png
 
 # Local planning / private notes
 workflow_plan.md
